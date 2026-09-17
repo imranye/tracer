@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "tracer-env",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-17",
+  "observability": { "enabled": true },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "tracer-db", "database_id": "bd912e23-79e0-4181-a0f5-4ac2f01434ef" }
+  ]
+}
