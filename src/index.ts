@@ -58,7 +58,7 @@ async function state(env: Env, auth: Auth) {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-    if (url.pathname === "/" && request.method === "GET") return new Response(APP, { headers: { "content-type": "text/html;charset=UTF-8" } });
+    if (url.pathname === "/" && request.method === "GET") return new Response(APP.replace('<main id="app"', '<pre id="prompt" class="hidden"></pre><main id="app"'), { headers: { "content-type": "text/html;charset=UTF-8" } });
     try {
       if (url.pathname === "/api/device/start" && request.method === "POST") {
         const requestToken = newToken(); const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
