@@ -109,6 +109,16 @@ export default {
         return json({ ok: true });
       }
       if (url.pathname === "/api/state" && request.method === "GET") return state(env, auth);
+      if (url.pathname === "/api/variables/bulk" && request.method === "POST") {
+        const body = await request.json() as { environment_id?: string; variables?: { name?: string; value?: string }[] };
+        if (!body.environment_id || !body.variables?.length || body.variables.length > 500) return json({ error: "Invalid import" }, 400);
+        if (!auth.admin && !(await env.DB.prepare("SELECT e.id FROM environments e JOIN projects p ON p.id=e.project_id WHERE e.id=? AND p.account_id=?").bind(body.environment_id, auth.accountId).first())) return json({ error: "Not found" }, 404);
+        const valid = body.variables.filter(v => v.name && v.value !== undefined && /^[A-Za-z_][A-Za-z0-9_]*$/.test(v.name));
+        if (valid.length !== body.variables.length) return json({ error: "Invalid variable name" }, 400);
+        const now = new Date().toISOString();
+        await env.DB.batch(await Promise.all(valid.map(async v => env.DB.prepare("INSERT INTO variables (id,environment_id,name,ciphertext,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(environment_id,name) DO UPDATE SET ciphertext=excluded.ciphertext,updated_at=excluded.updated_at").bind(id(), body.environment_id, v.name, await encrypt(v.value as string, env.TRACER_ENCRYPTION_KEY), now))));
+        return json({ imported: valid.length });
+      }
       if (url.pathname === "/api/variables" && request.method === "POST") {
         const body = await request.json() as { environment_id?: string; name?: string; value?: string };
         if (!body.environment_id || !body.name || body.value === undefined || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(body.name)) return json({ error: "Invalid variable" }, 400);
