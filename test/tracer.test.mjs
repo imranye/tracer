@@ -67,3 +67,25 @@ test("deployed Worker creates a pending device request", async () => {
   assert.equal(pending.status, 200);
   assert.deepEqual(await pending.json(), { status: "pending" });
 });
+
+test("landing page requires explicit confirmation before approving a device request", async (t) => {
+  // Exercise the Worker's "/" handler directly. Copy the TypeScript entry to a
+  // .mts file so Node can strip its types; skip on runtimes without that support.
+  const { copyFile } = await import("node:fs/promises");
+  const dir = await mkdtemp(join(tmpdir(), "tracer-worker-"));
+  const entry = join(dir, "index.mts");
+  await copyFile(join(process.cwd(), "src/index.ts"), entry);
+  let worker;
+  try {
+    worker = (await import(entry)).default;
+  } catch {
+    t.skip("TypeScript type stripping is unavailable on this Node.js runtime");
+    return;
+  }
+  const response = await worker.fetch(new Request("https://tracer.test/?device=attacker-request-token"), {});
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.ok(!html.includes("{approve();load()}"), "the page must not approve a device request on load");
+  assert.ok(html.includes("confirmDevice"), "the page must expose an explicit approve action");
+  assert.ok(html.includes("denyDevice"), "the page must expose an explicit deny action");
+});
